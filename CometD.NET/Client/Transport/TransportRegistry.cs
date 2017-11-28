@@ -1,38 +1,33 @@
-using System;
 using System.Collections.Generic;
 
 namespace CometD.NetCore.Client.Transport
 {
     public class TransportRegistry
     {
-        private IDictionary<String, ClientTransport> _transports = new Dictionary<String, ClientTransport>();
-        private List<String> _allowed = new List<String>();
+        private readonly IDictionary<string, ClientTransport> _transports = new Dictionary<string, ClientTransport>();
+        private readonly List<string> _allowed = new List<string>();
 
         public void Add(ClientTransport transport)
         {
-            if (transport != null)
-            {
-                _transports[transport.Name] = transport;
-                _allowed.Add(transport.Name);
-            }
+            if (transport == null) return;
+
+            _transports[transport.Name] = transport;
+            _allowed.Add(transport.Name);
         }
 
-        public IList<String> KnownTransports
+        public IList<string> KnownTransports
         {
             get
             {
-                var newList = new List<String>(_transports.Keys.Count);
-                foreach (var key in _transports.Keys)
-                {
-                    newList.Add(key);
-                }
+                var newList = new List<string>(_transports.Keys.Count);
+                newList.AddRange(_transports.Keys);
                 return newList.AsReadOnly();
             }
         }
 
-        public IList<String> AllowedTransports => _allowed.AsReadOnly();
+        public IList<string> AllowedTransports => _allowed.AsReadOnly();
 
-        public IList<ClientTransport> Negotiate(IList<Object> requestedTransports, String bayeuxVersion)
+        public IList<ClientTransport> Negotiate(IList<object> requestedTransports, string bayeuxVersion)
         {
             var list = new List<ClientTransport>();
 
@@ -40,23 +35,21 @@ namespace CometD.NetCore.Client.Transport
             {
                 foreach (var requestedTransportName in requestedTransports)
                 {
-                    if (requestedTransportName.Equals(transportName))
+                    if (!requestedTransportName.Equals(transportName)) continue;
+
+                    var transport = GetTransport(transportName);
+                    if (transport.Accept(bayeuxVersion))
                     {
-                        var transport = getTransport(transportName);
-                        if (transport.accept(bayeuxVersion))
-                        {
-                            list.Add(transport);
-                        }
+                        list.Add(transport);
                     }
                 }
             }
             return list;
         }
 
-        public ClientTransport getTransport(String transport)
+        public ClientTransport GetTransport(string transport)
         {
-            ClientTransport obj;
-            _transports.TryGetValue(transport, out obj);
+            _transports.TryGetValue(transport, out var obj);
             return obj;
         }
     }

@@ -11,138 +11,138 @@ namespace CometD.NetCore.Common
     /// </summary>
     public abstract class AbstractClientSession : IClientSession
     {
-        private List<IExtension> _extensions = new List<IExtension>();
-        private Dictionary<String, Object> _attributes = new Dictionary<String, Object>();
-        private Dictionary<String, AbstractSessionChannel> _channels = new Dictionary<String, AbstractSessionChannel>();
+        private readonly List<IExtension> _extensions = new List<IExtension>();
+        private readonly Dictionary<string, object> _attributes = new Dictionary<string, object>();
+        private readonly Dictionary<string, AbstractSessionChannel> _channels = new Dictionary<string, AbstractSessionChannel>();
         private int _batch;
         private int _idGen;
 
-        protected String newMessageId()
+        protected string NewMessageId()
         {
             return Convert.ToString(_idGen++);
         }
 
-        public void addExtension(IExtension extension)
+        public void AddExtension(IExtension extension)
         {
             _extensions.Add(extension);
         }
 
-        public void removeExtension(IExtension extension)
+        public void RemoveExtension(IExtension extension)
         {
             _extensions.Remove(extension);
         }
 
-        protected bool extendSend(IMutableMessage message)
+        protected bool ExtendSend(IMutableMessage message)
         {
             if (message.Meta)
             {
                 foreach (var extension in _extensions)
-                    if (!extension.sendMeta(this, message))
+                    if (!extension.SendMeta(this, message))
                         return false;
             }
             else
             {
                 foreach (var extension in _extensions)
-                    if (!extension.send(this, message))
+                    if (!extension.Send(this, message))
                         return false;
             }
             return true;
         }
 
-        protected bool extendRcv(IMutableMessage message)
+        protected bool ExtendRcv(IMutableMessage message)
         {
             if (message.Meta)
             {
                 foreach (var extension in _extensions)
-                    if (!extension.rcvMeta(this, message))
+                    if (!extension.ReceiveMeta(this, message))
                         return false;
             }
             else
             {
                 foreach (var extension in _extensions)
-                    if (!extension.rcv(this, message))
+                    if (!extension.Receive(this, message))
                         return false;
             }
             return true;
         }
 
         /* ------------------------------------------------------------ */
-        protected abstract ChannelId newChannelId(String channelId);
+        protected abstract ChannelId NewChannelId(string channelId);
 
         /* ------------------------------------------------------------ */
-        protected abstract AbstractSessionChannel newChannel(ChannelId channelId);
+        protected abstract AbstractSessionChannel NewChannel(ChannelId channelId);
 
         /* ------------------------------------------------------------ */
-        public IClientSessionChannel getChannel(String channelId)
+        public IClientSessionChannel GetChannel(string channelId)
         {
             _channels.TryGetValue(channelId, out var channel);
 
             if (channel == null)
             {
-                var id = newChannelId(channelId);
-                var new_channel = newChannel(id);
+                var id = NewChannelId(channelId);
+                var newChannel = NewChannel(id);
 
                 if (_channels.ContainsKey(channelId))
                     channel = _channels[channelId];
                 else
-                    _channels[channelId] = new_channel;
+                    _channels[channelId] = newChannel;
 
                 if (channel == null)
-                    channel = new_channel;
+                    channel = newChannel;
             }
             return channel;
         }
 
-        protected Dictionary<String, AbstractSessionChannel> Channels => _channels;
+        protected Dictionary<string, AbstractSessionChannel> Channels => _channels;
 
         /* ------------------------------------------------------------ */
-        public void startBatch()
+        public void StartBatch()
         {
             _batch++;
         }
 
         /* ------------------------------------------------------------ */
-        protected abstract void sendBatch();
+        protected abstract void SendBatch();
 
         /* ------------------------------------------------------------ */
-        public bool endBatch()
+        public bool EndBatch()
         {
             if (--_batch == 0)
             {
-                sendBatch();
+                SendBatch();
                 return true;
             }
             return false;
         }
 
         /* ------------------------------------------------------------ */
-        public void batch(BatchDelegate batch)
+        public void Batch(BatchDelegate batch)
         {
-            startBatch();
+            StartBatch();
             try
             {
                 batch();
             }
             finally
             {
-                endBatch();
+                EndBatch();
             }
         }
 
         protected bool Batching => _batch > 0;
 
         /* ------------------------------------------------------------ */
-        public Object getAttribute(String name)
+        public object GetAttribute(string name)
         {
             _attributes.TryGetValue(name, out var obj);
             return obj;
         }
 
         /* ------------------------------------------------------------ */
-        public ICollection<String> AttributeNames => _attributes.Keys;
+        public ICollection<string> AttributeNames => _attributes.Keys;
 
         /* ------------------------------------------------------------ */
-        public Object removeAttribute(String name)
+        public object RemoveAttribute(string name)
         {
             try
             {
@@ -157,17 +157,17 @@ namespace CometD.NetCore.Common
         }
 
         /* ------------------------------------------------------------ */
-        public void setAttribute(String name, Object val)
+        public void SetAttribute(string name, object val)
         {
             _attributes[name] = val;
         }
 
         /* ------------------------------------------------------------ */
-        public void resetSubscriptions()
+        public void ResetSubscriptions()
         {
             foreach (var channel in _channels)
             {
-                channel.Value.resetSubscriptions();
+                channel.Value.ResetSubscriptions();
             }
         }
 
@@ -178,9 +178,7 @@ namespace CometD.NetCore.Common
         /// </summary>
         /// <param name="message">the message received.
         /// </param>
-        /// <param name="mutable">the mutable version of the message received
-        /// </param>
-        public void receive(IMutableMessage message)
+        public void Receive(IMutableMessage message)
         {
             var id = message.Channel;
             if (id == null)
@@ -188,37 +186,37 @@ namespace CometD.NetCore.Common
                 throw new ArgumentException("Bayeux messages must have a channel, " + message);
             }
 
-            if (!extendRcv(message))
+            if (!ExtendRcv(message))
                 return;
 
-            var channel = (AbstractSessionChannel)getChannel(id);
+            var channel = (AbstractSessionChannel)GetChannel(id);
             var channelId = channel.ChannelId;
 
-            channel.notifyMessageListeners(message);
+            channel.NotifyMessageListeners(message);
 
             foreach (var channelPattern in channelId.Wilds)
             {
-                var channelIdPattern = newChannelId(channelPattern);
-                if (channelIdPattern.matches(channelId))
+                var channelIdPattern = NewChannelId(channelPattern);
+                if (channelIdPattern.Matches(channelId))
                 {
-                    var wildChannel = (AbstractSessionChannel)getChannel(channelPattern);
-                    wildChannel.notifyMessageListeners(message);
+                    var wildChannel = (AbstractSessionChannel)GetChannel(channelPattern);
+                    wildChannel.NotifyMessageListeners(message);
                 }
             }
         }
 
-        public abstract void handshake(IDictionary<String, Object> template);
-        public abstract void handshake();
-        public abstract void disconnect();
+        public abstract void Handshake(IDictionary<string, object> template);
+        public abstract void Handshake();
+        public abstract void Disconnect();
         public abstract bool Handshook { get; }
-        public abstract String Id { get; }
+        public abstract string Id { get; }
         public abstract bool Connected { get; }
 
         /// <summary> <p>A channel scoped to a {@link ClientSession}.</p></summary>
         public abstract class AbstractSessionChannel : IClientSessionChannel
         {
             private ChannelId _id;
-            private Dictionary<String, Object> _attributes = new Dictionary<String, Object>();
+            private Dictionary<string, object> _attributes = new Dictionary<string, object>();
             private List<IMessageListener> _subscriptions = new List<IMessageListener>();
             private int _subscriptionCount;
             private List<IClientSessionChannelListener> _listeners = new List<IClientSessionChannelListener>();
@@ -233,36 +231,36 @@ namespace CometD.NetCore.Common
             public ChannelId ChannelId => _id;
 
             /* ------------------------------------------------------------ */
-            public void addListener(IClientSessionChannelListener listener)
+            public void AddListener(IClientSessionChannelListener listener)
             {
                 _listeners.Add(listener);
             }
 
             /* ------------------------------------------------------------ */
-            public void removeListener(IClientSessionChannelListener listener)
+            public void RemoveListener(IClientSessionChannelListener listener)
             {
                 _listeners.Remove(listener);
             }
 
             /* ------------------------------------------------------------ */
-            protected abstract void sendSubscribe();
+            protected abstract void SendSubscribe();
 
             /* ------------------------------------------------------------ */
-            protected abstract void sendUnSubscribe();
+            protected abstract void SendUnSubscribe();
 
             /* ------------------------------------------------------------ */
-            public void subscribe(IMessageListener listener)
+            public void Subscribe(IMessageListener listener)
             {
                 _subscriptions.Add(listener);
 
                 _subscriptionCount++;
                 var count = _subscriptionCount;
                 if (count == 1)
-                    sendSubscribe();
+                    SendSubscribe();
             }
 
             /* ------------------------------------------------------------ */
-            public void unsubscribe(IMessageListener listener)
+            public void Unsubscribe(IMessageListener listener)
             {
                 _subscriptions.Remove(listener);
 
@@ -270,18 +268,18 @@ namespace CometD.NetCore.Common
                 if (_subscriptionCount < 0) _subscriptionCount = 0;
                 var count = _subscriptionCount;
                 if (count == 0)
-                    sendUnSubscribe();
+                    SendUnSubscribe();
             }
 
             /* ------------------------------------------------------------ */
-            public void unsubscribe()
+            public void Unsubscribe()
             {
                 foreach (var listener in new List<IMessageListener>(_subscriptions))
-                    unsubscribe(listener);
+                    Unsubscribe(listener);
             }
 
             /* ------------------------------------------------------------ */
-            public void resetSubscriptions()
+            public void ResetSubscriptions()
             {
                 foreach (var listener in new List<IMessageListener>(_subscriptions))
                 {
@@ -291,21 +289,21 @@ namespace CometD.NetCore.Common
             }
 
             /* ------------------------------------------------------------ */
-            public String Id => _id.ToString();
+            public string Id => _id.ToString();
 
             /* ------------------------------------------------------------ */
             public bool DeepWild => _id.DeepWild;
 
             /* ------------------------------------------------------------ */
-            public bool Meta => _id.isMeta();
+            public bool Meta => _id.IsMeta();
 
             /* ------------------------------------------------------------ */
-            public bool Service => _id.isService();
+            public bool Service => _id.IsService();
 
             /* ------------------------------------------------------------ */
             public bool Wild => _id.Wild;
 
-            public void notifyMessageListeners(IMessage message)
+            public void NotifyMessageListeners(IMessage message)
             {
                 foreach (var listener in _listeners)
                 {
@@ -313,7 +311,7 @@ namespace CometD.NetCore.Common
                     {
                         try
                         {
-                            ((IMessageListener)listener).onMessage(this, message);
+                            ((IMessageListener)listener).OnMessage(this, message);
                         }
                         catch (Exception x)
                         {
@@ -331,7 +329,7 @@ namespace CometD.NetCore.Common
                         {
                             try
                             {
-                                listener.onMessage(this, message);
+                                listener.OnMessage(this, message);
                             }
                             catch (Exception x)
                             {
@@ -342,22 +340,22 @@ namespace CometD.NetCore.Common
                 }
             }
 
-            public void setAttribute(String name, Object val)
+            public void SetAttribute(string name, object val)
             {
                 _attributes[name] = val;
             }
 
-            public Object getAttribute(String name)
+            public object GetAttribute(string name)
             {
                 _attributes.TryGetValue(name, out var obj);
                 return obj;
             }
 
-            public ICollection<String> AttributeNames => _attributes.Keys;
+            public ICollection<string> AttributeNames => _attributes.Keys;
 
-            public Object removeAttribute(String name)
+            public object RemoveAttribute(string name)
             {
-                var old = getAttribute(name);
+                var old = GetAttribute(name);
                 _attributes.Remove(name);
                 return old;
             }
@@ -365,13 +363,13 @@ namespace CometD.NetCore.Common
             public abstract IClientSession Session { get; }
 
             /* ------------------------------------------------------------ */
-            public override String ToString()
+            public override string ToString()
             {
                 return _id.ToString();
             }
 
-            public abstract void publish(Object param1);
-            public abstract void publish(Object param1, String param2);
+            public abstract void Publish(object param1);
+            public abstract void Publish(object param1, string param2);
         }
     }
 }

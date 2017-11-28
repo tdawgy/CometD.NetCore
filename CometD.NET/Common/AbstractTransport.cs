@@ -1,103 +1,94 @@
-using System;
-using System.Collections.Generic;
-using Cometd.Common;
 using CometD.NetCore.Bayeux;
+using System.Collections.Generic;
 
 namespace CometD.NetCore.Common
 {
     public class AbstractTransport : ITransport
     {
-        private String _name;
-        protected IDictionary<String, Object> _options;
-        protected String[] _prefix;
+        protected IDictionary<string, object> Options;
+        protected string[] Prefix;
 
-        public AbstractTransport(String name, IDictionary<String, Object> options)
+        public AbstractTransport(string name, IDictionary<string, object> options)
         {
-            _name = name;
-            _options = options == null ? new Dictionary<String, Object>() : options;
-            _prefix = new String[0];
+            Name = name;
+            Options = options ?? new Dictionary<string, object>();
+            Prefix = new string[0];
         }
 
-        public String Name => _name;
+        public string Name { get; }
 
-        public Object getOption(String name)
+        public object GetOption(string name)
         {
-            _options.TryGetValue(name, out var value);
+            Options.TryGetValue(name, out var value);
 
-            String prefix = null;
+            string prefix = null;
 
-            foreach (var segment in _prefix)
+            foreach (var segment in Prefix)
             {
                 prefix = prefix == null ? segment : (prefix + "." + segment);
                 var key = prefix + "." + name;
 
-                if (_options.ContainsKey(key))
+                if (Options.ContainsKey(key))
                     value = key;
             }
 
             return value;
         }
 
-        public void setOption(String name, Object value)
+        public void SetOption(string name, object value)
         {
             var prefix = OptionPrefix;
-            _options.Add(prefix == null ? name : (prefix + "." + name), value);
+            Options.Add(prefix == null ? name : (prefix + "." + name), value);
         }
 
-        public ICollection<String> OptionNames
+        public ICollection<string> OptionNames
         {
             get
             {
-                var names = new HashSet<String>();
-                foreach (var name in _options.Keys)
+                var names = new HashSet<string>();
+                foreach (var name in Options.Keys)
                 {
                     var lastDot = name.LastIndexOf('.');
-                    if (lastDot >= 0)
-                        names.Add(name.Substring(lastDot + 1));
-                    else
-                        names.Add(name);
+                    names.Add(lastDot >= 0 ? name.Substring(lastDot + 1) : name);
                 }
                 return names;
             }
         }
 
-        public String OptionPrefix
+        public string OptionPrefix
         {
             get
             {
-                String prefix = null;
-                foreach (var segment in _prefix)
+                string prefix = null;
+                foreach (var segment in Prefix)
                     prefix = prefix == null ? segment : (prefix + "." + segment);
 
                 return prefix;
             }
-            set
-            {
-                _prefix = value.Split('.');
-            }
+            set => Prefix = value.Split('.');
         }
 
-        public String getOption(String option, String dftValue)
+        public string GetOption(string option, string dftValue)
         {
-            var value = getOption(option);
+            var value = GetOption(option);
             return ObjectConverter.ToString(value, dftValue);
         }
 
-        public long getOption(String option, long dftValue)
+        public long GetOption(string option, long dftValue)
         {
-            var value = getOption(option);
+            var value = GetOption(option);
             return ObjectConverter.ToInt64(value, dftValue);
         }
 
-        public int getOption(String option, int dftValue)
+        public int GetOption(string option, int dftValue)
         {
-            var value = getOption(option);
+            var value = GetOption(option);
             return ObjectConverter.ToInt32(value, dftValue);
         }
 
-        public bool getOption(String option, bool dftValue)
+        public bool GetOption(string option, bool dftValue)
         {
-            var value = getOption(option);
+            var value = GetOption(option);
             return ObjectConverter.ToBoolean(value, dftValue);
         }
     }

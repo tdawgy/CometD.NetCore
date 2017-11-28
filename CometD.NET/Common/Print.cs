@@ -1,30 +1,27 @@
-﻿using System;
+﻿using CometD.NetCore.Bayeux;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using CometD.NetCore.Bayeux;
 
-namespace Cometd.Common
+namespace CometD.NetCore.Common
 {
-    class Print
+    public class Print
     {
-        public static String List(IList<String> L)
+        public static string List(IList<string> l)
         {
             var s = "";
-            foreach (var e in L) s += " '" + e + "'";
+            foreach (var e in l) s += " '" + e + "'";
             return s;
         }
 
-        public static String Dictionary(IDictionary<String, Object> D)
+        public static string Dictionary(IDictionary<string, object> d)
         {
-            if (D == null) return " (null)";
-            if (!(D is IDictionary<String, Object>)) return " (invalid)";
+            if (d == null) return " (null)";
+
             var s = "";
-            foreach (var kvp in D)
+            foreach (var kvp in d)
             {
                 s += " '" + kvp.Key + ":";
-                if (kvp.Value is IDictionary<String, Object>)
-                    s += Dictionary(kvp.Value as IDictionary<String, Object>);
+                if (kvp.Value is IDictionary<string, object>)
+                    s += Dictionary(kvp.Value as IDictionary<string, object>);
                 else
                     s += kvp.Value.ToString();
                 s += "'";
@@ -32,27 +29,27 @@ namespace Cometd.Common
             return s;
         }
 
-        public static String Messages(IList<IMessage> M)
+        public static string Messages(IList<IMessage> messages)
         {
-            if (M == null) return " (null)";
-            if (!(M is IList<IMessage>)) return " (invalid)";
+            if (messages == null) return " (null)";
+
             var s = "[";
-            foreach (var m in M)
+            foreach (var message in messages)
             {
-                s += " " + m;
+                s += " " + message;
             }
             s += " ]";
             return s;
         }
 
-        public static String Messages(IList<IMutableMessage> M)
+        public static string Messages(IList<IMutableMessage> messages)
         {
-            if (M == null) return " (null)";
-            if (!(M is IList<IMutableMessage>)) return " (invalid)";
+            if (messages == null) return " (null)";
+
             var s = "[";
-            foreach (var m in M)
+            foreach (var message in messages)
             {
-                s += " " + m;
+                s += " " + message;
             }
             s += " ]";
             return s;

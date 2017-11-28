@@ -6,16 +6,16 @@ namespace CometD.NetCore.Client.Transport
 {
     public interface ITransportListener
     {
-        void onSending(IList<IMessage> messages);
+        void OnSending(IList<IMessage> messages);
 
-        void onMessages(IList<IMutableMessage> messages);
+        void OnMessages(IList<IMutableMessage> messages);
 
-        void onConnectException(Exception x, IList<IMessage> messages);
+        void OnConnectException(Exception x, IList<IMessage> messages);
 
-        void onException(Exception x, IList<IMessage> messages);
+        void OnException(Exception x, IList<IMessage> messages);
 
-        void onExpire(IList<IMessage> messages);
+        void OnExpire(IList<IMessage> messages);
 
-        void onProtocolError(String info, IList<IMessage> messages);
+        void OnProtocolError(string info, IList<IMessage> messages);
     }
 }

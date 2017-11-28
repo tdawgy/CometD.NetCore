@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
-using Cometd.Common;
 using CometD.NetCore.Bayeux;
 using CometD.NetCore.Bayeux.Client;
+using CometD.NetCore.Common;
 
 namespace CometD.NetCore.Client.Extension
 {
@@ -17,15 +17,15 @@ namespace CometD.NetCore.Client.Extension
         private volatile int _lag;
         private volatile int _offset;
 
-        public bool rcv(IClientSession session, IMutableMessage message)
+        public bool Receive(IClientSession session, IMutableMessage message)
         {
             return true;
         }
 
-        public bool rcvMeta(IClientSession session, IMutableMessage message)
+        public bool ReceiveMeta(IClientSession session, IMutableMessage message)
         {
-            var ext = (Dictionary<String, Object>)message.getExt(false);
-            var sync = (Dictionary<string, object>) ext?["timesync"];
+            var ext = (Dictionary<string, object>)message.GetExt(false);
+            var sync = (Dictionary<string, object>)ext?["timesync"];
             if (sync != null)
             {
                 var now = (DateTime.Now.Ticks - 621355968000000000) / 10000;
@@ -44,16 +44,16 @@ namespace CometD.NetCore.Client.Extension
             return true;
         }
 
-        public bool send(IClientSession session, IMutableMessage message)
+        public bool Send(IClientSession session, IMutableMessage message)
         {
             return true;
         }
 
-        public bool sendMeta(IClientSession session, IMutableMessage message)
+        public bool SendMeta(IClientSession session, IMutableMessage message)
         {
-            var ext = (Dictionary<String, Object>)message.getExt(true);
+            var ext = (Dictionary<string, object>)message.GetExt(true);
             var now = (DateTime.Now.Ticks - 621355968000000000) / 10000;
-            // Changed JSON.Literal to String
+            // Changed JSON.Literal to string
             var timesync = "{\"tc\":" + now + ",\"l\":" + _lag + ",\"o\":" + _offset + "}";
             ext["timesync"] = timesync;
             return true;
