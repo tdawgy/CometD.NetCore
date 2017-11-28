@@ -1,19 +1,19 @@
 using System;
 using System.Collections.Generic;
-using Cometd.Common;
 using CometD.NetCore.Bayeux;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace CometD.NetCore.Common
 {
     [Serializable]
-    public class DictionaryMessage : Dictionary<String, Object>, IMutableMessage
+    public class DictionaryMessage : Dictionary<string, object>, IMutableMessage
     {
         public DictionaryMessage()
         {
         }
 
-        public DictionaryMessage(IDictionary<String, Object> message)
+        public DictionaryMessage(IDictionary<string, object> message)
         {
             foreach (var kvp in message)
             {
@@ -21,152 +21,155 @@ namespace CometD.NetCore.Common
             }
         }
 
-        public IDictionary<String, Object> Advice
+        public IDictionary<string, object> Advice
         {
             get
             {
-                TryGetValue(Message_Fields.ADVICE_FIELD, out var advice);
-                if (advice is String)
+                TryGetValue(MessageFields.AdviceField, out var advice);
+                if (advice is string)
                 {
-                    advice = JsonConvert.DeserializeObject((String) advice);
-                    this[Message_Fields.ADVICE_FIELD] = advice;
+                    advice = JsonConvert.DeserializeObject((string)advice);
+                    this[MessageFields.AdviceField] = advice;
                 }
-                return (IDictionary<String, Object>)advice;
+                else if (advice is JObject)
+                {
+                    advice = JsonConvert.DeserializeObject<IDictionary<string, object>>(advice.ToString());
+                }
+                return (IDictionary<string, object>)advice;
             }
         }
 
-        public String Channel
+        public string Channel
         {
             get
             {
-                TryGetValue(Message_Fields.CHANNEL_FIELD, out var obj);
-                return (String)obj;
+                TryGetValue(MessageFields.ChannelField, out var obj);
+                return (string)obj;
             }
-            set => this[Message_Fields.CHANNEL_FIELD] = value;
+            set => this[MessageFields.ChannelField] = value;
         }
 
         public ChannelId ChannelId => new ChannelId(Channel);
 
-        public String ClientId
+        public string ClientId
         {
             get
             {
-                TryGetValue(Message_Fields.CLIENT_ID_FIELD, out var obj);
-                return (String)obj;
+                TryGetValue(MessageFields.ClientIdField, out var obj);
+                return (string)obj;
             }
             set
             {
-                this[Message_Fields.CLIENT_ID_FIELD] = value;
+                this[MessageFields.ClientIdField] = value;
             }
-
         }
 
-        public Object Data
+        public object Data
         {
             get
             {
-                TryGetValue(Message_Fields.DATA_FIELD, out var obj);
+                TryGetValue(MessageFields.DataField, out var obj);
                 return obj;
             }
-            set => this[Message_Fields.DATA_FIELD] = value;
+            set => this[MessageFields.DataField] = value;
         }
 
-        public IDictionary<String, Object> DataAsDictionary
+        public IDictionary<string, object> DataAsDictionary
         {
             get
             {
-                TryGetValue(Message_Fields.DATA_FIELD, out var data);
-                if (data is String)
+                TryGetValue(MessageFields.DataField, out var data);
+                if (data is string)
                 {
-                    data = JsonConvert.DeserializeObject((String) data);
-                    this[Message_Fields.DATA_FIELD] = data;
+                    data = JsonConvert.DeserializeObject((string)data);
+                    this[MessageFields.DataField] = data;
                 }
-                return (Dictionary<String, Object>)data;
+                return (Dictionary<string, object>)data;
             }
         }
 
-        public IDictionary<String, Object> Ext
+        public IDictionary<string, object> Ext
         {
             get
             {
-                TryGetValue(Message_Fields.EXT_FIELD, out var ext);
-                if (ext is String)
+                TryGetValue(MessageFields.ExtField, out var ext);
+                if (ext is string)
                 {
-                    ext = JsonConvert.DeserializeObject((String) ext);
-                    this[Message_Fields.EXT_FIELD] = ext;
+                    ext = JsonConvert.DeserializeObject((string)ext);
+                    this[MessageFields.ExtField] = ext;
                 }
-                return (Dictionary<String, Object>)ext;
+                return (Dictionary<string, object>)ext;
             }
         }
 
-        public String Id
+        public string Id
         {
             get
             {
-                TryGetValue(Message_Fields.ID_FIELD, out var obj);
-                return (String)obj;
+                TryGetValue(MessageFields.IdField, out var obj);
+                return (string)obj;
             }
-            set => this[Message_Fields.ID_FIELD] = value;
+            set => this[MessageFields.IdField] = value;
         }
 
-        public String JSON => JsonConvert.SerializeObject(this);
+        public string Json => JsonConvert.SerializeObject(this);
 
-        public IDictionary<String, Object> getAdvice(bool create)
+        public IDictionary<string, object> GetAdvice(bool create)
         {
             var advice = Advice;
             if (create && advice == null)
             {
-                advice = new Dictionary<String, Object>();
-                this[Message_Fields.ADVICE_FIELD] = advice;
+                advice = new Dictionary<string, object>();
+                this[MessageFields.AdviceField] = advice;
             }
             return advice;
         }
 
-        public IDictionary<String, Object> getDataAsDictionary(bool create)
+        public IDictionary<string, object> GetDataAsDictionary(bool create)
         {
             var data = DataAsDictionary;
             if (create && data == null)
             {
-                data = new Dictionary<String, Object>();
-                this[Message_Fields.DATA_FIELD] = data;
+                data = new Dictionary<string, object>();
+                this[MessageFields.DataField] = data;
             }
             return data;
         }
 
-        public IDictionary<String, Object> getExt(bool create)
+        public IDictionary<string, object> GetExt(bool create)
         {
             var ext = Ext;
             if (create && ext == null)
             {
-                ext = new Dictionary<String, Object>();
-                this[Message_Fields.EXT_FIELD] = ext;
+                ext = new Dictionary<string, object>();
+                this[MessageFields.ExtField] = ext;
             }
             return ext;
         }
 
-        public bool Meta => ChannelId.isMeta(Channel);
+        public bool Meta => ChannelId.IsMeta(Channel);
 
         public bool Successful
         {
             get
             {
-                TryGetValue(Message_Fields.SUCCESSFUL_FIELD, out var obj);
+                TryGetValue(MessageFields.SuccessfulField, out var obj);
                 return ObjectConverter.ToBoolean(obj, false);
             }
-            set => this[Message_Fields.SUCCESSFUL_FIELD] = value;
+            set => this[MessageFields.SuccessfulField] = value;
         }
 
-        public override String ToString()
+        public override string ToString()
         {
-            return JSON;
+            return Json;
         }
 
-        public static IList<IMutableMessage> parseMessages(String content)
+        public static IList<IMutableMessage> ParseMessages(string content)
         {
-            IList<IDictionary<String, Object>> dictionaryList = null;
+            IList<IDictionary<string, object>> dictionaryList = null;
             try
             {
-                dictionaryList = JsonConvert.DeserializeObject<IList<IDictionary<String, Object>>>(content);
+                dictionaryList = JsonConvert.DeserializeObject<IList<IDictionary<string, object>>>(content);
             }
             catch (Exception e)
             {

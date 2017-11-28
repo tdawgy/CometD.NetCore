@@ -1,13 +1,12 @@
-using System;
-using System.Collections.Generic;
-using Cometd.Common;
 using CometD.NetCore.Bayeux;
 using CometD.NetCore.Bayeux.Client;
+using System.Collections.Generic;
+using CometD.NetCore.Common;
 
 namespace CometD.NetCore.Client.Extension
 {
+    /// <inheritdoc />
     /// <summary> AckExtension
-    /// 
     /// This client-side extension enables the client to acknowledge to the server
     /// the messages that the client has received.
     /// For the acknowledgement to work, the server must be configured with the
@@ -20,57 +19,55 @@ namespace CometD.NetCore.Client.Extension
     /// can arrive via both long poll and normal response.
     /// Messages are not acknowledged one by one, but instead a group of messages is
     /// acknowledged when long poll returns.
-    /// 
     /// </summary>
 
     public class AckExtension : IExtension
     {
-        public const String EXT_FIELD = "ack";
+        public const string ExtField = "ack";
 
-        private volatile bool _serverSupportsAcks = false;
+        private volatile bool _serverSupportsAcks;
         private volatile int _ackId = -1;
 
-        public bool rcv(IClientSession session, IMutableMessage message)
+        public bool Receive(IClientSession session, IMutableMessage message)
         {
             return true;
         }
 
-        public bool rcvMeta(IClientSession session, IMutableMessage message)
+        public bool ReceiveMeta(IClientSession session, IMutableMessage message)
         {
-            if (Channel_Fields.META_HANDSHAKE.Equals(message.Channel))
+            if (ChannelFields.MetaHandshake.Equals(message.Channel))
             {
-                var ext = (Dictionary<String, Object>)message.getExt(false);
-                _serverSupportsAcks = ext != null && true.Equals(ext[EXT_FIELD]);
+                var ext = (Dictionary<string, object>)message.GetExt(false);
+                _serverSupportsAcks = ext != null && true.Equals(ext[ExtField]);
             }
-            else if (_serverSupportsAcks && true.Equals(message[Message_Fields.SUCCESSFUL_FIELD]) && Channel_Fields.META_CONNECT.Equals(message.Channel))
+            else if (_serverSupportsAcks && true.Equals(message[MessageFields.SuccessfulField]) && ChannelFields.MetaConnect.Equals(message.Channel))
             {
-                var ext = (Dictionary<String, Object>)message.getExt(false);
-                if (ext != null)
-                {
-                    Object ack;
-                    ext.TryGetValue(EXT_FIELD, out ack);
-                    _ackId = ObjectConverter.ToInt32(ack, _ackId);
-                }
+                var ext = (Dictionary<string, object>)message.GetExt(false);
+
+                if (ext == null) return true;
+
+                ext.TryGetValue(ExtField, out var ack);
+                _ackId = ObjectConverter.ToInt32(ack, _ackId);
             }
 
             return true;
         }
 
-        public bool send(IClientSession session, IMutableMessage message)
+        public bool Send(IClientSession session, IMutableMessage message)
         {
             return true;
         }
 
-        public bool sendMeta(IClientSession session, IMutableMessage message)
+        public bool SendMeta(IClientSession session, IMutableMessage message)
         {
-            if (Channel_Fields.META_HANDSHAKE.Equals(message.Channel))
+            if (ChannelFields.MetaHandshake.Equals(message.Channel))
             {
-                message.getExt(true)[EXT_FIELD] = true;
+                message.GetExt(true)[ExtField] = true;
                 _ackId = -1;
             }
-            else if (_serverSupportsAcks && Channel_Fields.META_CONNECT.Equals(message.Channel))
+            else if (_serverSupportsAcks && ChannelFields.MetaConnect.Equals(message.Channel))
             {
-                message.getExt(true)[EXT_FIELD] = _ackId;
+                message.GetExt(true)[ExtField] = _ackId;
             }
 
             return true;

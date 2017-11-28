@@ -4,203 +4,199 @@ using System.Text;
 
 namespace CometD.NetCore.Bayeux
 {
-	/// <summary> Holder of a channel ID broken into path segments</summary>
-	public class ChannelId
-	{
-		public const String WILD = "*";
-		public const String DEEPWILD = "**";
+    /// <summary> Holder of a channel ID broken into path segments</summary>
+    public class ChannelId
+    {
+        public const string WildCard = "*";
+        public const string DeepWildCard = "**";
 
-		private readonly String _name;
-		private readonly String[] _segments;
-		private readonly int _wild;
-	    private readonly String _parent;
+        private readonly string _name;
+        private readonly string[] _segments;
+        private readonly int _wild;
+        private readonly string _parent;
 
-		public ChannelId(String name)
-		{
-			_name = name;
-			if (string.IsNullOrEmpty(name) || name[0] != '/' || "/".Equals(name))
-				throw new ArgumentException(name);
+        public ChannelId(string name)
+        {
+            _name = name;
+            if (string.IsNullOrEmpty(name) || name[0] != '/' || "/".Equals(name))
+                throw new ArgumentException(name);
 
-		    if (name[name.Length - 1] == '/')
-				name = name.Substring(0, (name.Length - 1) - (0));
+            if (name[name.Length - 1] == '/')
+                name = name.Substring(0, (name.Length - 1) - (0));
 
-			_segments = name.Substring(1).Split('/');
-			var wilds = new String[_segments.Length + 1];
+            _segments = name.Substring(1).Split('/');
+            var wilds = new string[_segments.Length + 1];
 
-			var b = new StringBuilder();
-			b.Append('/');
+            var b = new StringBuilder();
+            b.Append('/');
 
-			for (var i = 0; i < _segments.Length; i++)
-			{
-				if (_segments[i] == null || _segments[i].Length == 0)
-					throw new ArgumentException(name);
+            for (var i = 0; i < _segments.Length; i++)
+            {
+                if (_segments[i] == null || _segments[i].Length == 0)
+                    throw new ArgumentException(name);
 
-				if (i > 0)
-					b.Append(_segments[i - 1]).Append('/');
-				wilds[_segments.Length - i] = b + "**";
-			}
-			wilds[0] = b + "*";
+                if (i > 0)
+                    b.Append(_segments[i - 1]).Append('/');
+                wilds[_segments.Length - i] = b + "**";
+            }
+            wilds[0] = b + "*";
 
-			_parent = _segments.Length == 1 ? null : b.ToString().Substring(0, b.Length - 1);
+            _parent = _segments.Length == 1 ? null : b.ToString().Substring(0, b.Length - 1);
 
-			if (_segments.Length == 0)
-				_wild = 0;
-			else if (WILD.Equals(_segments[_segments.Length - 1]))
-				_wild = 1;
-			else if (DEEPWILD.Equals(_segments[_segments.Length - 1]))
-				_wild = 2;
-			else
-				_wild = 0;
+            if (_segments.Length == 0)
+                _wild = 0;
+            else if (WildCard.Equals(_segments[_segments.Length - 1]))
+                _wild = 1;
+            else if (DeepWildCard.Equals(_segments[_segments.Length - 1]))
+                _wild = 2;
+            else
+                _wild = 0;
 
-			if (_wild == 0)
-			{
-				Wilds = (new List<String>(wilds)).AsReadOnly();
-			}
-			else
-				Wilds = (new List<String>()).AsReadOnly();
-		}
+            Wilds = _wild == 0 ? (new List<string>(wilds)).AsReadOnly() : (new List<string>()).AsReadOnly();
+        }
 
-		public bool Wild => _wild > 0;
+        public bool Wild => _wild > 0;
 
-	    public bool DeepWild => _wild > 1;
+        public bool DeepWild => _wild > 1;
 
-	    public bool isMeta()
-		{
-			return _segments.Length > 0 && "meta".Equals(_segments[0]);
-		}
+        public bool IsMeta()
+        {
+            return _segments.Length > 0 && "meta".Equals(_segments[0]);
+        }
 
-		public bool isService()
-		{
-			return _segments.Length > 0 && "service".Equals(_segments[0]);
-		}
+        public bool IsService()
+        {
+            return _segments.Length > 0 && "service".Equals(_segments[0]);
+        }
 
-		public override bool Equals(Object obj)
-		{
-			if (this == obj)
-				return true;
+        public override bool Equals(object obj)
+        {
+            if (this == obj) return true;
 
-			if (obj is ChannelId id)
-			{
-			    if (id.depth() == depth())
-				{
-					for (var i = id.depth(); i-- > 0; )
-						if (!id.getSegment(i).Equals(getSegment(i)))
-							return false;
-					return true;
-				}
-			}
+            if (!(obj is ChannelId id)) return false;
 
-			return false;
-		}
+            if (id.Depth() != Depth()) return false;
 
-		/* ------------------------------------------------------------ */
-		/// <summary>Match channel IDs with wildcard support</summary>
-		/// <param name="name">
-		/// </param>
-		/// <returns> true if this channelID matches the passed channel ID. If this channel is wild, then matching is wild.
-		/// If the passed channel is wild, then it is the same as an equals call.
-		/// </returns>
-		public bool matches(ChannelId name)
-		{
-			if (name.Wild)
-				return Equals(name);
+            for (var i = id.Depth(); i-- > 0;)
+                if (!id.GetSegment(i).Equals(GetSegment(i)))
+                    return false;
 
-			switch (_wild)
-			{
+            return true;
+        }
 
-				case 0:
-					return Equals(name);
+        /* ------------------------------------------------------------ */
+        /// <summary>Match channel IDs with wildcard support</summary>
+        /// <param name="name">
+        /// </param>
+        /// <returns> true if this channelID matches the passed channel ID. If this channel is wild, then matching is wild.
+        /// If the passed channel is wild, then it is the same as an equals call.
+        /// </returns>
+        public bool Matches(ChannelId name)
+        {
+            if (name.Wild)
+                return Equals(name);
 
-				case 1:
-					if (name._segments.Length != _segments.Length)
-						return false;
-					for (var i = _segments.Length - 1; i-- > 0; )
-						if (!_segments[i].Equals(name._segments[i]))
-							return false;
-					return true;
+            switch (_wild)
+            {
+                case 0:
+                    return Equals(name);
 
+                case 1:
+                    if (name._segments.Length != _segments.Length)
+                        return false;
 
-				case 2:
-					if (name._segments.Length < _segments.Length)
-						return false;
-					for (var i = _segments.Length - 1; i-- > 0; )
-						if (!_segments[i].Equals(name._segments[i]))
-							return false;
-					return true;
-			}
-			return false;
-		}
+                    for (var i = _segments.Length - 1; i-- > 0;)
+                        if (!_segments[i].Equals(name._segments[i]))
+                            return false;
 
-		public override int GetHashCode()
-		{
-			return _name.GetHashCode();
-		}
+                    return true;
 
-		public override String ToString()
-		{
-			return _name;
-		}
+                case 2:
+                    if (name._segments.Length < _segments.Length)
+                        return false;
 
-		public int depth()
-		{
-			return _segments.Length;
-		}
+                    for (var i = _segments.Length - 1; i-- > 0;)
+                        if (!_segments[i].Equals(name._segments[i]))
+                            return false;
 
-		/* ------------------------------------------------------------ */
-		public bool isAncestorOf(ChannelId id)
-		{
-			if (Wild || depth() >= id.depth())
-				return false;
+                    return true;
 
-			for (var i = _segments.Length; i-- > 0; )
-			{
-				if (!_segments[i].Equals(id._segments[i]))
-					return false;
-			}
-			return true;
-		}
+                default:
+                    return false;
+            }
+        }
 
-		/* ------------------------------------------------------------ */
-		public bool isParentOf(ChannelId id)
-		{
-			if (Wild || depth() != id.depth() - 1)
-				return false;
+        public override int GetHashCode()
+        {
+            return _name.GetHashCode();
+        }
 
-			for (var i = _segments.Length; i-- > 0; )
-			{
-				if (!_segments[i].Equals(id._segments[i]))
-					return false;
-			}
-			return true;
-		}
+        public override string ToString()
+        {
+            return _name;
+        }
 
-		/* ------------------------------------------------------------ */
-		public String getParent()
-		{
-			return _parent;
-		}
+        public int Depth()
+        {
+            return _segments.Length;
+        }
 
-		public String getSegment(int i)
-		{
-			if (i > _segments.Length)
-				return null;
-			return _segments[i];
-		}
+        /* ------------------------------------------------------------ */
+        public bool IsAncestorOf(ChannelId id)
+        {
+            if (Wild || Depth() >= id.Depth())
+                return false;
 
-		/* ------------------------------------------------------------ */
-		/// <returns> The list of wilds channels that match this channel, or
-		/// the empty list if this channel is already wild.
-		/// </returns>
-		public IList<String> Wilds { get; }
+            for (var i = _segments.Length; i-- > 0;)
+            {
+                if (!_segments[i].Equals(id._segments[i]))
+                    return false;
+            }
 
-	    public static bool isMeta(String channelId)
-		{
-			return channelId != null && channelId.StartsWith("/meta/");
-		}
+            return true;
+        }
 
-		public static bool isService(String channelId)
-		{
-			return channelId != null && channelId.StartsWith("/service/");
-		}
-	}
+        /* ------------------------------------------------------------ */
+        public bool IsParentOf(ChannelId id)
+        {
+            if (Wild || Depth() != id.Depth() - 1)
+                return false;
+
+            for (var i = _segments.Length; i-- > 0;)
+            {
+                if (!_segments[i].Equals(id._segments[i]))
+                    return false;
+            }
+            return true;
+        }
+
+        /* ------------------------------------------------------------ */
+        public string GetParent()
+        {
+            return _parent;
+        }
+
+        public string GetSegment(int i)
+        {
+            if (i > _segments.Length)
+                return null;
+            return _segments[i];
+        }
+
+        /* ------------------------------------------------------------ */
+        /// <returns> The list of wilds channels that match this channel, or
+        /// the empty list if this channel is already wild.
+        /// </returns>
+        public IList<string> Wilds { get; }
+
+        public static bool IsMeta(string channelId)
+        {
+            return channelId != null && channelId.StartsWith("/meta/");
+        }
+
+        public static bool IsService(string channelId)
+        {
+            return channelId != null && channelId.StartsWith("/service/");
+        }
+    }
 }

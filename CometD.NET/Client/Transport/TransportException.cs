@@ -9,12 +9,12 @@ namespace CometD.NetCore.Client.Transport
         {
         }
 
-        public TransportException(String message)
+        public TransportException(string message)
             : base(message)
         {
         }
 
-        public TransportException(String message, Exception cause)
+        public TransportException(string message, Exception cause)
             : base(message, cause)
         {
         }

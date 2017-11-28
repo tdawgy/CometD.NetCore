@@ -1,34 +1,32 @@
-using System;
-using System.Collections.Generic;
-using Cometd.Common;
 using CometD.NetCore.Bayeux;
 using CometD.NetCore.Common;
+using System.Collections.Generic;
 
 namespace CometD.NetCore.Client.Transport
 {
     public abstract class ClientTransport : AbstractTransport
     {
-        public const String TIMEOUT_OPTION = "timeout";
-        public const String INTERVAL_OPTION = "interval";
-        public const String MAX_NETWORK_DELAY_OPTION = "maxNetworkDelay";
+        public const string TimeoutOption = "timeout";
+        public const string IntervalOption = "interval";
+        public const string MaxNetworkDelayOption = "maxNetworkDelay";
 
-        public ClientTransport(String name, IDictionary<String, Object> options)
+        public ClientTransport(string name, IDictionary<string, object> options)
             : base(name, options)
         {
         }
 
-        public virtual void init()
+        public virtual void Init()
         {
         }
 
-        public abstract void abort();
+        public abstract void Abort();
 
-        public abstract void reset();
+        public abstract void Reset();
 
-        public abstract bool accept(String version);
+        public abstract bool Accept(string version);
 
-        public abstract void send(ITransportListener listener, IList<IMutableMessage> messages);
+        public abstract void Send(ITransportListener listener, IList<IMutableMessage> messages);
 
-        public abstract bool isSending { get; }
+        public abstract bool IsSending { get; }
     }
 }

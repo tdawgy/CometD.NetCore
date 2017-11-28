@@ -1,81 +1,83 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using CometD.NetCore.Bayeux;
 
-namespace Cometd.Common
+namespace CometD.NetCore.Common
 {
-    class ObjectConverter
+    public class ObjectConverter
     {
-        public static String ToString(Object obj, String defaultValue)
+        public static string ToString(object obj, string defaultValue)
         {
             if (obj == null) return defaultValue;
 
-            try { return obj.ToString(); }
-            catch (Exception) { }
-
-            return defaultValue;
+            try
+            {
+                return obj.ToString();
+            }
+            catch (Exception)
+            {
+                return defaultValue;
+            }
         }
 
-        public static Int64 ToInt64(Object obj, Int64 defaultValue)
+        public static long ToInt64(object obj, long defaultValue)
         {
             if (obj == null) return defaultValue;
 
             try { return Convert.ToInt64(obj); }
-            catch (Exception) { }
+            catch (Exception) { /* do nothing */ }
 
-            try { return Int64.Parse(obj.ToString()); }
-            catch (Exception) { }
+            try { return long.Parse(obj.ToString()); }
+            catch (Exception) { /* do nothing */ }
 
             return defaultValue;
         }
 
-        public static Int32 ToInt32(Object obj, Int32 defaultValue)
+        public static int ToInt32(object obj, int defaultValue)
         {
             if (obj == null) return defaultValue;
 
             try { return Convert.ToInt32(obj); }
-            catch (Exception) { }
+            catch (Exception) { /* do nothing */ }
 
-            try { return Int32.Parse(obj.ToString()); }
-            catch (Exception) { }
+            try { return int.Parse(obj.ToString()); }
+            catch (Exception) { /* do nothing */ }
 
             return defaultValue;
         }
 
-        public static Boolean ToBoolean(Object obj, Boolean defaultValue)
+        public static bool ToBoolean(object obj, bool defaultValue)
         {
             if (obj == null) return defaultValue;
 
             try { return Convert.ToBoolean(obj); }
-            catch (Exception) { }
+            catch (Exception) { /* do nothing */ }
 
-            try { return Boolean.Parse(obj.ToString()); }
-            catch (Exception) { }
+            try { return bool.Parse(obj.ToString()); }
+            catch (Exception) { /* do nothing */ }
 
             return defaultValue;
         }
 
-        public static IList<IMessage> ToListOfIMessage(IList<IMutableMessage> M)
+        public static IList<IMessage> ToListOfIMessage(IList<IMutableMessage> messages)
         {
-            var R = new List<IMessage>();
-            foreach (var m in M)
+            var r = new List<IMessage>();
+            foreach (var message in messages)
             {
-                R.Add((IMessage)m);
+                r.Add(message);
             }
-            return R;
+            return r;
         }
 
-        public static IList<IDictionary<String, Object>> ToListOfDictionary(IList<IMutableMessage> M)
+        public static IList<IDictionary<string, object>> ToListOfDictionary(IList<IMutableMessage> messages)
         {
-            IList<IDictionary<String, Object>> R = new List<IDictionary<String, Object>>();
+            IList<IDictionary<string, object>> r = new List<IDictionary<string, object>>();
 
-            foreach (var m in M)
+            foreach (var message in messages)
             {
-                R.Add((IDictionary<String, Object>)m);
+                r.Add(message);
             }
-            return R;
+            return r;
         }
     }
 }

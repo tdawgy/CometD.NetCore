@@ -1,45 +1,45 @@
+using CometD.NetCore.Bayeux;
+using CometD.NetCore.Common;
+using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
-using Cometd.Common;
-using CometD.NetCore.Bayeux;
-using CometD.NetCore.Common;
-using Newtonsoft.Json;
 
 namespace CometD.NetCore.Client.Transport
 {
     public class LongPollingTransport : HttpClientTransport
     {
-        private List<TransportExchange> _exchanges = new List<TransportExchange>();
+        private readonly List<TransportExchange> _exchanges = new List<TransportExchange>();
         private bool _appendMessageType;
 
-        public LongPollingTransport(IDictionary<String, Object> options)
+        public LongPollingTransport(IDictionary<string, object> options)
             : base("long-polling", options)
         {
         }
 
-        public override bool accept(String bayeuxVersion)
+        public override bool Accept(string bayeuxVersion)
         {
             return true;
         }
 
-        public override void init()
+        public override void Init()
         {
-            base.init();
+            base.Init();
             var uriRegex = new Regex("(^https?://(([^:/\\?#]+)(:(\\d+))?))?([^\\?#]*)(.*)?");
-            var uriMatch = uriRegex.Match(getURL());
-            if (uriMatch.Success)
-            {
-                var afterPath = uriMatch.Groups[7].ToString();
-                _appendMessageType = afterPath == null || afterPath.Trim().Length == 0;
-            }
+            var uriMatch = uriRegex.Match(Url);
+
+            if (!uriMatch.Success) return;
+
+            var afterPath = uriMatch.Groups[7].ToString();
+            _appendMessageType = afterPath == null || afterPath.Trim().Length == 0;
         }
 
-        public override void abort()
+        public override void Abort()
         {
             lock (this)
             {
@@ -50,91 +50,91 @@ namespace CometD.NetCore.Client.Transport
             }
         }
 
-        public override void reset()
+        public override void Reset()
         {
         }
 
         public class LongPollingRequest
         {
-            ITransportListener listener;
-            IList<IMutableMessage> messages;
-            HttpWebRequest request;
-            public TransportExchange exchange;
+            private readonly ITransportListener _listener;
+            private readonly IList<IMutableMessage> _messages;
+            private readonly HttpWebRequest _request;
+            public TransportExchange Exchange { get; set; }
 
-            public LongPollingRequest(ITransportListener _listener, IList<IMutableMessage> _messages,
-                    HttpWebRequest _request)
+            public LongPollingRequest(ITransportListener listener, IList<IMutableMessage> messages,
+                    HttpWebRequest request)
             {
-                listener = _listener;
-                messages = _messages;
-                request = _request;
+                _listener = listener;
+                _messages = messages;
+                _request = request;
             }
 
-            public void send()
+            public void Send()
             {
                 try
                 {
-                    request.BeginGetRequestStream(GetRequestStreamCallback, exchange);
+                    _request.BeginGetRequestStream(GetRequestStreamCallback, Exchange);
                 }
                 catch (Exception e)
                 {
-                    exchange.Dispose();
-                    listener.onException(e, ObjectConverter.ToListOfIMessage(messages));
+                    Exchange.Dispose();
+                    _listener.OnException(e, ObjectConverter.ToListOfIMessage(_messages));
                 }
             }
         }
 
-        private List<LongPollingRequest> transportQueue = new List<LongPollingRequest>();
-        private HashSet<LongPollingRequest> transmissions = new HashSet<LongPollingRequest>();
+        private readonly List<LongPollingRequest> _transportQueue = new List<LongPollingRequest>();
+        private readonly HashSet<LongPollingRequest> _transmissions = new HashSet<LongPollingRequest>();
 
-        private void performNextRequest()
+        private void PerformNextRequest()
         {
             var ok = false;
             LongPollingRequest nextRequest = null;
 
             lock (this)
             {
-                if (transportQueue.Count > 0 && transmissions.Count <= 1)
+                if (_transportQueue.Count > 0 && _transmissions.Count <= 1)
                 {
                     ok = true;
-                    nextRequest = transportQueue[0];
-                    transportQueue.Remove(nextRequest);
-                    transmissions.Add(nextRequest);
+                    nextRequest = _transportQueue[0];
+                    _transportQueue.Remove(nextRequest);
+                    _transmissions.Add(nextRequest);
                 }
             }
 
             if (ok)
             {
-                nextRequest?.send();
+                nextRequest?.Send();
             }
         }
 
-        public void addRequest(LongPollingRequest request)
+        public void AddRequest(LongPollingRequest request)
         {
             lock (this)
             {
-                transportQueue.Add(request);
+                _transportQueue.Add(request);
             }
 
-            performNextRequest();
+            PerformNextRequest();
         }
 
-        public void removeRequest(LongPollingRequest request)
+        public void RemoveRequest(LongPollingRequest request)
         {
             lock (this)
             {
-                transmissions.Remove(request);
+                _transmissions.Remove(request);
             }
 
-            performNextRequest();
+            PerformNextRequest();
         }
 
-        public override void send(ITransportListener listener, IList<IMutableMessage> messages)
+        public override void Send(ITransportListener listener, IList<IMutableMessage> messages)
         {
-            var url = getURL();
+            var url = Url;
 
             if (_appendMessageType && messages.Count == 1 && messages[0].Meta)
             {
-                var type = messages[0].Channel.Substring(Channel_Fields.META.Length);
+                var type = messages[0].Channel.Substring(ChannelFields.Meta.Length);
                 if (url.EndsWith("/"))
                     url = url.Substring(0, url.Length - 1);
                 url += type;
@@ -146,38 +146,40 @@ namespace CometD.NetCore.Client.Transport
 
             if (request.CookieContainer == null)
                 request.CookieContainer = new CookieContainer();
-            request.CookieContainer.Add(request.RequestUri, getCookieCollection());
+
+            if (CookieCollection != null)
+                request.CookieContainer.Add(request.RequestUri, CookieCollection);
+
+            if (request.Headers == null)
+                request.Headers = new WebHeaderCollection();
+
+            request.Headers.Add(HeaderCollection);
 
             var content = JsonConvert.SerializeObject(ObjectConverter.ToListOfDictionary(messages));
 
             var longPollingRequest = new LongPollingRequest(listener, messages, request);
 
-            var exchange = new TransportExchange(this, listener, messages, longPollingRequest);
-            exchange.content = content;
-            exchange.request = request;
+            var exchange = new TransportExchange(this, listener, messages, longPollingRequest)
+            {
+                Content = content,
+                Request = request
+            };
             lock (this)
             {
                 _exchanges.Add(exchange);
             }
 
-            longPollingRequest.exchange = exchange;
-            addRequest(longPollingRequest);
+            longPollingRequest.Exchange = exchange;
+            AddRequest(longPollingRequest);
         }
 
-        public override bool isSending
+        public override bool IsSending
         {
             get
             {
                 lock (this)
                 {
-                    if (transportQueue.Count > 0)
-                        return true;
-
-                    foreach (var transmission in transmissions)
-                        if (transmission.exchange.isSending)
-                            return true;
-
-                    return false;
+                    return _transportQueue.Count > 0 || _transmissions.Any(transmission => transmission.Exchange.IsSending);
                 }
             }
         }
@@ -190,30 +192,35 @@ namespace CometD.NetCore.Client.Transport
             try
             {
                 // End the operation
-                using (var postStream = exchange.request.EndGetRequestStream(asynchronousResult))
+                using (var postStream = exchange.Request.EndGetRequestStream(asynchronousResult))
                 {
                     // Convert the string into a byte array.
-                    var byteArray = Encoding.UTF8.GetBytes(exchange.content);
-                    //Console.WriteLine("Sending message(s): {0}", exchange.content);
+                    var byteArray = Encoding.UTF8.GetBytes(exchange.Content);
+#if DEBUG
+#if IgnoreMetaConnect
+                    if (!exchange.Content.Contains("meta/connect")) // Don't write polling messages to the output
+#endif
+                    System.Diagnostics.Debug.WriteLine($"Sending message(s): {exchange.Content}");
+#endif
 
                     // Write to the request stream.
-                    postStream.WriteAsync(byteArray, 0, exchange.content.Length);
+                    postStream.WriteAsync(byteArray, 0, exchange.Content.Length);
                 }
 
                 // Start the asynchronous operation to get the response
-                exchange.listener.onSending(ObjectConverter.ToListOfIMessage(exchange.messages));
-                var result = exchange.request.BeginGetResponse(GetResponseCallback, exchange);
+                exchange.Listener.OnSending(ObjectConverter.ToListOfIMessage(exchange.Messages));
+                var result = exchange.Request.BeginGetResponse(GetResponseCallback, exchange);
 
-                long timeout = 120000;
+                const long timeout = 120000;
                 ThreadPool.RegisterWaitForSingleObject(result.AsyncWaitHandle, TimeoutCallback, exchange, timeout, true);
 
-                exchange.isSending = false;
+                exchange.IsSending = false;
             }
             catch (Exception e)
             {
-                exchange.request?.Abort();
+                exchange.Request?.Abort();
                 exchange.Dispose();
-                exchange.listener.onException(e, ObjectConverter.ToListOfIMessage(exchange.messages));
+                exchange.Listener.OnException(e, ObjectConverter.ToListOfIMessage(exchange.Messages));
             }
         }
 
@@ -224,27 +231,27 @@ namespace CometD.NetCore.Client.Transport
             try
             {
                 // End the operation
-                string responseString;
-                using (var response = (HttpWebResponse)exchange.request.EndGetResponse(asynchronousResult))
+                string responsestring;
+                using (var response = (HttpWebResponse)exchange.Request.EndGetResponse(asynchronousResult))
                 {
                     using (var streamResponse = response.GetResponseStream())
                     {
                         using (var streamRead = new StreamReader(streamResponse))
-                            responseString = streamRead.ReadToEnd();
+                            responsestring = streamRead.ReadToEnd();
                     }
 
                     if (response.Cookies != null)
                         foreach (Cookie cookie in response.Cookies)
                             exchange.AddCookie(cookie);
                 }
-                exchange.messages = DictionaryMessage.parseMessages(responseString);
+                exchange.Messages = DictionaryMessage.ParseMessages(responsestring);
 
-                exchange.listener.onMessages(exchange.messages);
+                exchange.Listener.OnMessages(exchange.Messages);
                 exchange.Dispose();
             }
             catch (Exception e)
             {
-                exchange.listener.onException(e, ObjectConverter.ToListOfIMessage(exchange.messages));
+                exchange.Listener.OnException(e, ObjectConverter.ToListOfIMessage(exchange.Messages));
                 exchange.Dispose();
             }
         }
@@ -253,52 +260,50 @@ namespace CometD.NetCore.Client.Transport
         // Abort the request if the timer fires.
         private static void TimeoutCallback(object state, bool timedOut)
         {
-            if (timedOut)
-            {
-                if (state is TransportExchange exchange)
-                {
-                    exchange.request?.Abort();
-                    exchange.Dispose();
-                }
-            }
+            if (!timedOut) return;
+
+            if (!(state is TransportExchange exchange)) return;
+
+            exchange.Request?.Abort();
+            exchange.Dispose();
         }
 
         public class TransportExchange
         {
-            private LongPollingTransport parent;
-            public String content;
-            public HttpWebRequest request;
-            public ITransportListener listener;
-            public IList<IMutableMessage> messages;
-            public LongPollingRequest lprequest;
-            public bool isSending;
+            private readonly LongPollingTransport _parent;
+            public string Content { get; set; }
+            public HttpWebRequest Request { get; set; }
+            public ITransportListener Listener { get; set; }
+            public IList<IMutableMessage> Messages { get; set; }
+            public LongPollingRequest LpRequest { get; set; }
+            public bool IsSending { get; set; }
 
-            public TransportExchange(LongPollingTransport _parent, ITransportListener _listener, IList<IMutableMessage> _messages,
-                    LongPollingRequest _lprequest)
+            public TransportExchange(LongPollingTransport parent, ITransportListener listener, IList<IMutableMessage> messages,
+                    LongPollingRequest lprequest)
             {
-                parent = _parent;
-                listener = _listener;
-                messages = _messages;
-                request = null;
-                lprequest = _lprequest;
-                isSending = true;
+                _parent = parent;
+                Listener = listener;
+                Messages = messages;
+                Request = null;
+                LpRequest = lprequest;
+                IsSending = true;
             }
 
             public void AddCookie(Cookie cookie)
             {
-                parent.addCookie(cookie);
+                _parent.AddCookie(cookie);
             }
 
             public void Dispose()
             {
-                parent.removeRequest(lprequest);
-                lock (parent)
-                    parent._exchanges.Remove(this);
+                _parent.RemoveRequest(LpRequest);
+                lock (_parent)
+                    _parent._exchanges.Remove(this);
             }
 
             public void Abort()
             {
-                request?.Abort();
+                Request?.Abort();
             }
         }
     }
